@@ -100,7 +100,7 @@ function loadState() {
     return {
       ...base,
       ...parsed,
-      settings: { ...base.settings, ...(parsed.settings || {}) },
+     settings: { ...base.settings, ...(parsed.settings || {}), parentPin: (parsed.settings?.parentPin ?? base.settings.parentPin) },
       habits: Array.isArray(parsed.habits) && parsed.habits.length ? parsed.habits : base.habits
     };
   } catch {
@@ -616,5 +616,6 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
