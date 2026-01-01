@@ -294,6 +294,14 @@ if (changePin) {
   updateSubtitle();
   render();
 }
+function requireParentPin() {
+  const pin = prompt("Enter Parent PIN:");
+  if (pin !== state.settings.parentPin) {
+    alert("Incorrect PIN");
+    return false;
+  }
+  return true;
+}
 
 function parentFlow() {
     const pin = prompt("Enter Parent PIN:");
@@ -619,6 +627,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
