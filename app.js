@@ -61,8 +61,8 @@ function init() {
 function defaultState() {
   return {
     settings: {
-      profileName: "",
-      parentConfirm: true
+  profileName: "",
+  parentPin: "1234" // default PIN, change later
     },
     habits: familyDefaults(), // each: {id, name, goal, active}
     // doneToday: { "YYYY-MM-DD": { habitId: true } }
@@ -283,11 +283,14 @@ function settingsFlow() {
 }
 
 function parentFlow() {
-  if (state.settings.parentConfirm) {
-    const ok = confirm("Enter Parent view?");
-    if (!ok) return;
+    const pin = prompt("Enter Parent PIN:");
+  if (pin !== state.settings.parentPin) {
+    alert("Incorrect PIN");
+    return;
   }
   alert(buildParentDashboard());
+}
+);
 }
 
 function updateSubtitle() {
@@ -605,3 +608,4 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
