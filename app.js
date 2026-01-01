@@ -274,8 +274,16 @@ function settingsFlow() {
   const name = prompt("Profile name (optional):", state.settings.profileName || "");
   if (name !== null) state.settings.profileName = name.trim();
 
-  const pc = confirm("Require confirmation before Parent view?\n\nOK = Yes\nCancel = No");
-  state.settings.parentConfirm = pc;
+  
+const changePin = confirm("Change Parent PIN?\n\nOK = Yes, Cancel = No");
+if (changePin) {
+  const newPin = prompt("Enter new 4-digit PIN:");
+  if (newPin && /^\d{4}$/.test(newPin)) {
+    state.settings.parentPin = newPin;
+  } else {
+    alert("PIN must be exactly 4 digits.");
+  }
+}
 
   saveState();
   updateSubtitle();
@@ -608,4 +616,5 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
