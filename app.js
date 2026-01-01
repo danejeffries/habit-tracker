@@ -51,7 +51,11 @@ function init() {
   btnAddHabit.addEventListener("click", addHabitFlow);
   btnSettings.addEventListener("click", settingsFlow);
   btnParent.addEventListener("click", parentFlow);
-  btnReviewMonth.addEventListener("click", () => monthlyReviewFlow(true));
+ btnReviewMonth.addEventListener("click", () => {
+  if (!requireParentPin()) return;
+  monthlyReviewFlow(true);
+});
+
 
   updateSubtitle();
   monthlyReviewFlow(false);
@@ -515,7 +519,11 @@ function render() {
     const editBtn = document.createElement("button");
     editBtn.className = "btn ghost";
     editBtn.textContent = "Edit";
-    editBtn.addEventListener("click", () => editHabitFlow(h));
+    editBtn.addEventListener("click", () => {
+  if (!requireParentPin()) return;
+  editHabitFlow(h);
+});
+
 
     right.appendChild(markBtn);
     right.appendChild(editBtn);
@@ -627,6 +635,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
