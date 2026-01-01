@@ -619,6 +619,23 @@ function buildParentDashboard() {
 }
 
 // ---------- helpers ----------
+function habitStreak(habitId) {
+  let streak = 0;
+  let d = new Date();
+
+  while (true) {
+    const iso = isoToday(d);
+    const doneForDay = state.done[iso];
+
+    if (!doneForDay || !doneForDay[habitId]) break;
+
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+
+  return streak;
+}
+
 function clampInt(n, min, max) {
   if (Number.isNaN(n)) return min;
   return Math.max(min, Math.min(max, n));
@@ -635,6 +652,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
