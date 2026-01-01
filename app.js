@@ -491,6 +491,11 @@ function render() {
 
     const meta = document.createElement("div");
     meta.className = "meta";
+     const streak = habitStreak(h.id);
+if (streak > 0) {
+  meta.appendChild(makePill(`🔥 ${streak}-day streak`));
+}
+
     meta.appendChild(makePill(`Goal: ${h.goal}/wk`));
 
     const wCount = week.counts[h.id] || 0;
@@ -652,6 +657,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
