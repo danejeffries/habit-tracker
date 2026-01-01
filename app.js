@@ -1,0 +1,607 @@
+/* Habit Tracker PWA (GitHub Pages)
+   - Up to 15 habits
+   - Daily completion + optional note
+   - Coloured success bars (day/week/month)
+   - Badges/rewards: perfect day/week/month + per-habit goal hits
+   - Monthly editing: prompt at new month + month “review” that archives the month’s active habit set
+   - Local-first storage (localStorage)
+*/
+
+const LS_KEY = "habit_tracker_v1";
+
+const $ = (id) => document.getElementById(id);
+
+const subtitle = $("subtitle");
+
+const monthPrompt = $("monthPrompt");
+const btnReviewMonth = $("btnReviewMonth");
+
+const btnAddHabit = $("btnAddHabit");
+const btnSettings = $("btnSettings");
+const btnParent = $("btnParent");
+
+const habitList = $("habitList");
+const emptyState = $("emptyState");
+
+const todayBar = $("todayBar");
+const weekBar = $("weekBar");
+const monthBar = $("monthBar");
+
+const todayPct = $("todayPct");
+const weekPct = $("weekPct");
+const monthPct = $("monthPct");
+
+const todayDetail = $("todayDetail");
+const weekDetail = $("weekDetail");
+const monthDetail = $("monthDetail");
+
+const todayBadges = $("todayBadges");
+const weekBadges = $("weekBadges");
+const monthBadges = $("monthBadges");
+
+const rewardsEl = $("rewards");
+
+let state = loadState();
+
+// ---------- Init ----------
+init();
+render();
+
+function init() {
+  btnAddHabit.addEventListener("click", addHabitFlow);
+  btnSettings.addEventListener("click", settingsFlow);
+  btnParent.addEventListener("click", parentFlow);
+  btnReviewMonth.addEventListener("click", () => monthlyReviewFlow(true));
+
+  updateSubtitle();
+  monthlyReviewFlow(false);
+}
+
+// ---------- State ----------
+function defaultState() {
+  return {
+    settings: {
+      profileName: "",
+      parentConfirm: true
+    },
+    habits: familyDefaults(), // each: {id, name, goal, active}
+    // doneToday: { "YYYY-MM-DD": { habitId: true } }
+    done: {},
+    // log entries: [{date, habitId, note}]
+    log: [],
+    // monthHabits: { "YYYY-MM": [habitId,...] }  archived active habit set for that month
+    monthHabits: {},
+    // rewards: [{ts, type, label}]
+    rewards: []
+  };
+}
+
+function familyDefaults() {
+  const mk = (name, goal) => ({ id: crypto.randomUUID(), name, goal, active: true });
+  return [
+    mk("Make bed", 7),
+    mk("Brush teeth (AM & PM)", 7),
+    mk("Homework / Study", 5),
+    mk("Physical activity", 3),
+    mk("Read 20 minutes", 5),
+    mk("Tidy room", 4),
+    mk("Screen-free time", 5),
+    mk("Kind act", 3)
+  ];
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    // basic merge to avoid missing keys
+    const base = defaultState();
+    return {
+      ...base,
+      ...parsed,
+      settings: { ...base.settings, ...(parsed.settings || {}) },
+      habits: Array.isArray(parsed.habits) && parsed.habits.length ? parsed.habits : base.habits
+    };
+  } catch {
+    return defaultState();
+  }
+}
+
+function saveState() {
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+}
+
+// ---------- Dates ----------
+function isoToday(d = new Date()) {
+  const tzOff = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tzOff).toISOString().slice(0, 10);
+}
+function monthKey(dateISO) {
+  return dateISO.slice(0, 7); // YYYY-MM
+}
+function weekKey(dateISO) {
+  // Monday-start week label like YYYY-Wxx
+  const [y, m, d] = dateISO.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  const dow = (dt.getDay() + 6) % 7; // Mon=0
+  dt.setDate(dt.getDate() - dow);
+  const year = dt.getFullYear();
+  const jan1 = new Date(year, 0, 1);
+  const days = Math.floor((dt - jan1) / 86400000);
+  const w = Math.floor(days / 7) + 1;
+  return `${year}-W${String(w).padStart(2, "0")}`;
+}
+
+// ---------- Monthly habit set ----------
+function activeHabitsForCurrentMonth() {
+  const today = isoToday();
+  const mk = monthKey(today);
+  const archived = state.monthHabits[mk];
+
+  if (Array.isArray(archived) && archived.length) {
+    return state.habits.filter(h => archived.includes(h.id));
+  }
+  // if not archived, use current active flags (and later we can archive)
+  return state.habits.filter(h => h.active !== false);
+}
+
+function monthlyReviewFlow(forceOpen) {
+  const today = isoToday();
+  const mk = monthKey(today);
+
+  const hasArchive = Array.isArray(state.monthHabits[mk]) && state.monthHabits[mk].length > 0;
+  if (!hasArchive) {
+    monthPrompt.classList.remove("hidden");
+    if (forceOpen) {
+      const ok = confirm(
+        `New month detected (${mk}).\n\nDo you want to review which habits are active this month?\n\nTip: You can change habit names/goals without losing history.`
+      );
+      if (ok) openMonthlyEditor(mk);
+      else archiveThisMonth(mk); // still archive current active set so prompt goes away
+    }
+  } else {
+    monthPrompt.classList.add("hidden");
+    if (forceOpen) openMonthlyEditor(mk);
+  }
+}
+
+function archiveThisMonth(mk) {
+  const ids = state.habits.filter(h => h.active !== false).map(h => h.id);
+  state.monthHabits[mk] = ids;
+  saveState();
+  monthPrompt.classList.add("hidden");
+}
+
+function openMonthlyEditor(mk) {
+  // Simple loop allowing user to toggle "active this month", edit, add, or finish.
+  while (true) {
+    const lines = state.habits.map((h, i) => {
+      const on = (h.active !== false) ? "✅" : "⬜";
+      return `${i + 1}. ${on} ${h.name} (goal ${h.goal}/wk)`;
+    }).join("\n");
+
+    const choice = prompt(
+      `Monthly habits for ${mk}\n\n` +
+      `Type:\n` +
+      `- a number (1-${state.habits.length}) to toggle active\n` +
+      `- "e" to edit a habit\n` +
+      `- "a" to add a new habit\n` +
+      `- "done" to finish\n\n` +
+      lines
+    );
+
+    if (choice === null) break;
+    const c = choice.trim().toLowerCase();
+
+    if (c === "done") break;
+    if (c === "a") { addHabitFlow(); continue; }
+    if (c === "e") { editHabitPickFlow(); continue; }
+
+    const n = parseInt(c, 10);
+    if (!Number.isNaN(n) && n >= 1 && n <= state.habits.length) {
+      const h = state.habits[n - 1];
+      h.active = !(h.active !== false); // toggle
+      saveState();
+      continue;
+    }
+  }
+
+  // After review, archive current month's active set so week/month stats remain consistent
+  archiveThisMonth(mk);
+  render();
+}
+
+// ---------- UI flows ----------
+function addHabitFlow() {
+  if (state.habits.length >= 15) {
+    alert("Max 15 habits. Edit or delete an existing habit first.");
+    return;
+  }
+
+  const name = prompt("New habit name (e.g., Read 20 minutes):");
+  if (!name) return;
+
+  const goalStr = prompt("Weekly goal (0–7):", "5");
+  const goal = clampInt(parseInt(goalStr ?? "5", 10), 0, 7);
+
+  state.habits.push({
+    id: crypto.randomUUID(),
+    name: name.trim(),
+    goal,
+    active: true
+  });
+
+  saveState();
+  render();
+}
+
+function editHabitPickFlow() {
+  if (!state.habits.length) return;
+
+  const list = state.habits.map((h, i) => `${i + 1}. ${h.name} (goal ${h.goal}/wk)`).join("\n");
+  const pick = prompt(`Edit which habit? Enter a number:\n\n${list}`);
+  if (!pick) return;
+
+  const n = parseInt(pick, 10);
+  if (Number.isNaN(n) || n < 1 || n > state.habits.length) return;
+
+  editHabitFlow(state.habits[n - 1]);
+}
+
+function editHabitFlow(h) {
+  const newName = prompt("Habit name:", h.name);
+  if (!newName) return;
+
+  const goalStr = prompt("Weekly goal (0–7):", String(h.goal));
+  const newGoal = clampInt(parseInt(goalStr ?? String(h.goal), 10), 0, 7);
+
+  const activeThisMonth = confirm("Active this month?\n\nOK = Active, Cancel = Inactive");
+  h.name = newName.trim();
+  h.goal = newGoal;
+  h.active = activeThisMonth;
+
+  const del = confirm("Delete this habit?\n\nOK = Delete\nCancel = Keep");
+  if (del) {
+    state.habits = state.habits.filter(x => x.id !== h.id);
+  }
+
+  saveState();
+  render();
+}
+
+function settingsFlow() {
+  const name = prompt("Profile name (optional):", state.settings.profileName || "");
+  if (name !== null) state.settings.profileName = name.trim();
+
+  const pc = confirm("Require confirmation before Parent view?\n\nOK = Yes\nCancel = No");
+  state.settings.parentConfirm = pc;
+
+  saveState();
+  updateSubtitle();
+  render();
+}
+
+function parentFlow() {
+  if (state.settings.parentConfirm) {
+    const ok = confirm("Enter Parent view?");
+    if (!ok) return;
+  }
+  alert(buildParentDashboard());
+}
+
+function updateSubtitle() {
+  const t = state.settings.profileName ? `Profile: ${state.settings.profileName}` : "Local-first • Works offline";
+  subtitle.textContent = t;
+}
+
+// ---------- Completion + note ----------
+function markHabitDoneToday(habitId) {
+  const today = isoToday();
+  const doneForDay = state.done[today] || {};
+  if (doneForDay[habitId]) return;
+
+  const habit = state.habits.find(h => h.id === habitId);
+  const note = prompt(`Optional note for: ${habit?.name || "habit"}\n\n(Leave blank for none)`, "") ?? "";
+
+  doneForDay[habitId] = true;
+  state.done[today] = doneForDay;
+
+  state.log.push({ date: today, habitId, note: note.trim() });
+
+  saveState();
+  render();
+}
+
+// ---------- Progress + colours ----------
+function dayProgress(dateISO, habits) {
+  const doneForDay = state.done[dateISO] || {};
+  const total = habits.length;
+  const done = habits.filter(h => !!doneForDay[h.id]).length;
+  const rate = total === 0 ? 0 : done / total;
+  return { total, done, rate };
+}
+
+function weekProgress(wkKey, habits) {
+  const counts = {};
+  for (const entry of state.log) {
+    if (weekKey(entry.date) !== wkKey) continue;
+    counts[entry.habitId] = (counts[entry.habitId] || 0) + 1;
+  }
+  const totalGoals = habits.reduce((a, h) => a + (h.goal || 0), 0);
+  const done = habits.reduce((a, h) => a + Math.min(counts[h.id] || 0, h.goal || 0), 0);
+  const rate = totalGoals === 0 ? 0 : done / totalGoals;
+  return { counts, totalGoals, done, rate };
+}
+
+function monthProgress(mk, habits) {
+  const counts = {};
+  for (const entry of state.log) {
+    if (monthKey(entry.date) !== mk) continue;
+    counts[entry.habitId] = (counts[entry.habitId] || 0) + 1;
+  }
+  // simple monthly target = weekly goal * number of distinct weeks in month so far (min 1)
+  const weeksSoFar = Math.max(1, countDistinctWeeksInMonth(mk));
+  const totalGoals = habits.reduce((a, h) => a + (h.goal || 0) * weeksSoFar, 0);
+  const done = habits.reduce((a, h) => a + Math.min(counts[h.id] || 0, (h.goal || 0) * weeksSoFar), 0);
+  const rate = totalGoals === 0 ? 0 : done / totalGoals;
+  return { counts, totalGoals, done, rate, weeksSoFar };
+}
+
+function countDistinctWeeksInMonth(mk) {
+  const set = new Set();
+  const today = isoToday();
+  // include current week if we're in the month
+  if (monthKey(today) === mk) set.add(weekKey(today));
+  for (const entry of state.log) {
+    if (monthKey(entry.date) !== mk) continue;
+    set.add(weekKey(entry.date));
+  }
+  return set.size;
+}
+
+function colourForRate(rate) {
+  // <50% = red, 50-79% = orange, >=80% = green
+  if (rate >= 0.8) return cssVar("--good");
+  if (rate >= 0.5) return cssVar("--mid");
+  return cssVar("--bad");
+}
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+// ---------- Rewards / Badges ----------
+function addRewardOnce(type, label) {
+  const key = `${type}|${label}`;
+  if (state.rewards.some(r => `${r.type}|${r.label}` === key)) return;
+  state.rewards.unshift({ ts: Date.now(), type, label });
+}
+
+function computeRewards(habits, day, week, month, today, wk, mk) {
+  // Perfect day (all habits completed)
+  if (habits.length > 0 && day.done === day.total) {
+    addRewardOnce("perfect_day", `Perfect Day • ${today}`);
+  }
+
+  // Perfect week (each habit goal met)
+  const perfectWeek = habits.every(h => (h.goal || 0) === 0 || (week.counts[h.id] || 0) >= (h.goal || 0));
+  if (habits.length > 0 && perfectWeek) {
+    addRewardOnce("perfect_week", `Perfect Week • ${wk}`);
+  }
+
+  // Perfect month (scaled goal met)
+  const perfectMonth = habits.every(h => {
+    const g = (h.goal || 0) * month.weeksSoFar;
+    return g === 0 || (month.counts[h.id] || 0) >= g;
+  });
+  if (habits.length > 0 && perfectMonth) {
+    addRewardOnce("perfect_month", `Perfect Month • ${mk}`);
+  }
+
+  // Per-habit goal hit exactly (week)
+  for (const h of habits) {
+    if ((h.goal || 0) > 0 && (week.counts[h.id] || 0) === (h.goal || 0)) {
+      addRewardOnce("habit_goal", `Goal Hit • ${h.name} • ${wk}`);
+    }
+  }
+}
+
+// ---------- Render ----------
+function render() {
+  const today = isoToday();
+  const wk = weekKey(today);
+  const mk = monthKey(today);
+
+  const habits = activeHabitsForCurrentMonth();
+
+  const day = dayProgress(today, habits);
+  const week = weekProgress(wk, habits);
+  const month = monthProgress(mk, habits);
+
+  computeRewards(habits, day, week, month, today, wk, mk);
+  saveState();
+
+  // meters
+  setMeter(todayBar, day.rate);
+  setMeter(weekBar, week.rate);
+  setMeter(monthBar, month.rate);
+
+  todayPct.textContent = `${pct(day.rate)}%`;
+  weekPct.textContent = `${pct(week.rate)}%`;
+  monthPct.textContent = `${pct(month.rate)}%`;
+
+  todayDetail.textContent = `${day.done}/${day.total} habits`;
+  weekDetail.textContent = `${week.done}/${week.totalGoals} goal points`;
+  monthDetail.textContent = `${month.done}/${month.totalGoals} goal points`;
+
+  // badges on cards
+  todayBadges.innerHTML = "";
+  weekBadges.innerHTML = "";
+  monthBadges.innerHTML = "";
+
+  if (habits.length > 0 && day.done === day.total) todayBadges.appendChild(makeBadge("Perfect day"));
+  if (habits.length > 0 && habits.every(h => (h.goal||0)===0 || (week.counts[h.id]||0) >= (h.goal||0))) weekBadges.appendChild(makeBadge("Perfect week"));
+  if (habits.length > 0 && habits.every(h => {
+    const g = (h.goal||0) * month.weeksSoFar;
+    return g===0 || (month.counts[h.id]||0) >= g;
+  })) monthBadges.appendChild(makeBadge("Perfect month"));
+
+  // habit list
+  habitList.innerHTML = "";
+  emptyState.classList.toggle("hidden", habits.length !== 0);
+
+  const doneForDay = state.done[today] || {};
+
+  for (const h of habits) {
+    const item = document.createElement("div");
+    item.className = "item";
+
+    const left = document.createElement("div");
+    left.className = "item-left";
+
+    const title = document.createElement("div");
+    title.className = "item-title";
+    title.textContent = h.name;
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.appendChild(makePill(`Goal: ${h.goal}/wk`));
+
+    const wCount = week.counts[h.id] || 0;
+    const hit = (h.goal || 0) > 0 && wCount >= (h.goal || 0);
+    meta.appendChild(makePill(`Week: ${wCount}/${h.goal}${hit ? " 🎯" : ""}`));
+
+    left.appendChild(title);
+    left.appendChild(meta);
+
+    const right = document.createElement("div");
+    right.className = "row";
+    right.style.justifyContent = "flex-end";
+
+    const done = !!doneForDay[h.id];
+
+    const markBtn = document.createElement("button");
+    markBtn.className = "btn";
+    markBtn.textContent = done ? "Done ✓" : "Mark";
+    markBtn.disabled = done;
+    if (done) {
+      markBtn.style.borderColor = "rgba(0,208,132,.45)";
+      markBtn.style.background = "rgba(0,208,132,.10)";
+    }
+    markBtn.addEventListener("click", () => markHabitDoneToday(h.id));
+
+    const editBtn = document.createElement("button");
+    editBtn.className = "btn ghost";
+    editBtn.textContent = "Edit";
+    editBtn.addEventListener("click", () => editHabitFlow(h));
+
+    right.appendChild(markBtn);
+    right.appendChild(editBtn);
+
+    item.appendChild(left);
+    item.appendChild(right);
+    habitList.appendChild(item);
+  }
+
+  // rewards list
+  rewardsEl.innerHTML = "";
+  if (!state.rewards.length) {
+    const r = document.createElement("div");
+    r.className = "reward";
+    r.textContent = "No rewards yet — complete all habits today to earn a Perfect Day badge.";
+    rewardsEl.appendChild(r);
+  } else {
+    for (const rwd of state.rewards.slice(0, 25)) {
+      const r = document.createElement("div");
+      r.className = "reward";
+      r.textContent = formatReward(rwd);
+      rewardsEl.appendChild(r);
+    }
+  }
+}
+
+function setMeter(el, rate) {
+  el.style.width = `${Math.round(rate * 100)}%`;
+  el.style.background = colourForRate(rate);
+}
+
+function makeBadge(text) {
+  const b = document.createElement("div");
+  b.className = "badge";
+  const d = document.createElement("span");
+  d.className = "dot";
+  d.style.background = cssVar("--good");
+  const t = document.createElement("span");
+  t.textContent = text;
+  b.appendChild(d);
+  b.appendChild(t);
+  return b;
+}
+
+function makePill(text) {
+  const p = document.createElement("span");
+  p.className = "pill";
+  p.textContent = text;
+  return p;
+}
+
+function formatReward(r) {
+  const dt = new Date(r.ts);
+  const stamp = dt.toLocaleDateString();
+  const icon = ({
+    perfect_day: "🏅",
+    perfect_week: "🏆",
+    perfect_month: "👑",
+    habit_goal: "🎯"
+  })[r.type] || "⭐";
+  return `${icon} ${r.label} • ${stamp}`;
+}
+
+function buildParentDashboard() {
+  const today = isoToday();
+  const wk = weekKey(today);
+  const mk = monthKey(today);
+  const habits = activeHabitsForCurrentMonth();
+
+  const week = weekProgress(wk, habits);
+  const month = monthProgress(mk, habits);
+
+  const lines = [];
+  lines.push("PARENT DASHBOARD");
+  lines.push(`Week: ${wk}`);
+  lines.push("");
+
+  for (const h of habits) {
+    const c = week.counts[h.id] || 0;
+    const g = h.goal || 0;
+    lines.push(`${pad(h.name, 20)} ${bar(c, Math.max(g, 1), 10)} ${c}/${g}${(g>0 && c>=g) ? " 🎯" : ""}`);
+  }
+
+  lines.push("");
+  lines.push(`Month: ${mk} (weeks so far: ${month.weeksSoFar})`);
+  for (const h of habits) {
+    const c = month.counts[h.id] || 0;
+    const g = (h.goal || 0) * month.weeksSoFar;
+    lines.push(`${pad(h.name, 20)} ${bar(c, Math.max(g, 1), 10)} ${c}/${g}`);
+  }
+
+  return lines.join("\n");
+}
+
+// ---------- helpers ----------
+function clampInt(n, min, max) {
+  if (Number.isNaN(n)) return min;
+  return Math.max(min, Math.min(max, n));
+}
+function pct(rate) {
+  return Math.round(rate * 100);
+}
+function pad(s, n) {
+  const t = String(s);
+  return t.length >= n ? t.slice(0, n - 1) + "…" : t + " ".repeat(n - t.length);
+}
+function bar(val, max, width) {
+  const r = max === 0 ? 0 : Math.min(1, val / max);
+  const fill = Math.round(r * width);
+  return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
+}
