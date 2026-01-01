@@ -303,8 +303,6 @@ function parentFlow() {
   }
   alert(buildParentDashboard());
 }
-);
-}
 
 function updateSubtitle() {
   const t = state.settings.profileName ? `Profile: ${state.settings.profileName}` : "Local-first • Works offline";
@@ -621,6 +619,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
