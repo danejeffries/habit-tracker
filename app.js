@@ -675,7 +675,7 @@ left.appendChild(title);
 
     const markBtn = document.createElement("button");
     markBtn.className = "btn";
-    markBtn.textContent = done ? "Undo" : "Mark";
+    markBtn.textContent = done ? "Done ✓" : "Mark";
    markBtn.disabled = false;
 
     if (done) {
@@ -843,6 +843,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
