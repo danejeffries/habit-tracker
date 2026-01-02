@@ -300,25 +300,6 @@ function editHabitFlow(h) {
   render();
 }
 
-  if (!newName) return;
-
-  const goalStr = prompt("Weekly goal (0–7):", String(h.goal));
-  const newGoal = clampInt(parseInt(goalStr ?? String(h.goal), 10), 0, 7);
-
-  const activeThisMonth = confirm("Active this month?\n\nOK = Active, Cancel = Inactive");
-  h.name = newName.trim();
-  h.goal = newGoal;
-  h.active = activeThisMonth;
-
-  const del = confirm("Delete this habit?\n\nOK = Delete\nCancel = Keep");
-  if (del) {
-    state.habits = state.habits.filter(x => x.id !== h.id);
-  }
-
-  saveState();
-  render();
-}
-
 function settingsFlow() {
   const name = prompt("Profile name (optional):", state.settings.profileName || "");
   if (name !== null) state.settings.profileName = name.trim();
@@ -736,6 +717,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
