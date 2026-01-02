@@ -341,6 +341,35 @@ function parentFlow() {
   alert(buildParentDashboard());
 }
 function summaryFlow() {
+  if (!requireParentPin()) return;
+
+  const today = isoToday();
+  const wk = weekKey(today);
+  const mk = monthKey(today);
+  const habits = activeHabitsForCurrentMonth();
+
+  const week = weekProgress(wk, habits);
+  const month = monthProgress(mk, habits);
+
+  const lines = [];
+  lines.push("SUMMARY");
+  lines.push("");
+  lines.push(`Week: ${wk}`);
+  for (const h of habits) {
+    lines.push(`- ${h.name}: ${week.counts[h.id] || 0}/${h.goal}`);
+  }
+
+  lines.push("");
+  lines.push(`Month: ${mk}`);
+  for (const h of habits) {
+    const goal = (h.goal || 0) * month.weeksSoFar;
+    lines.push(`- ${h.name}: ${month.counts[h.id] || 0}/${goal}`);
+  }
+
+  alert(lines.join("\n"));
+}
+
+function summaryFlow() {
   if (!requireParentPin()) return; // keep it parent-gated
 
   const today = isoToday();
@@ -756,6 +785,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
