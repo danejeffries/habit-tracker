@@ -695,6 +695,21 @@ left.appendChild(title);
 
     right.appendChild(markBtn);
     right.appendChild(editBtn);
+const noteVal = getTodayNote(h.id);
+
+const noteBox = document.createElement("div");
+noteBox.className = "noteBox";
+noteBox.textContent = noteVal ? `📝 ${noteVal}` : "📝 Add note…";
+
+noteBox.addEventListener("click", () => {
+  const updated = prompt(`Note for: ${h.name}`, noteVal);
+  if (updated === null) return;
+  setTodayNote(h.id, updated);
+  saveState();
+  render();
+});
+
+left.appendChild(noteBox);
 
     item.appendChild(left);
     item.appendChild(right);
@@ -857,6 +872,7 @@ function setNoteForDay(habitId, dateISO, note) {
   const trimmed = (note || "").trim();
   if (trimmed) state.log.push({ date: dateISO, habitId, note: trimmed });
 }
+
 
 
 
