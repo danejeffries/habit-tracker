@@ -675,8 +675,9 @@ left.appendChild(title);
 
     const markBtn = document.createElement("button");
     markBtn.className = "btn";
-    markBtn.textContent = done ? "Done ✓" : "Mark";
-    markBtn.disabled = done;
+    markBtn.textContent = done ? "Undo" : "Mark";
+   markBtn.disabled = false;
+
     if (done) {
       markBtn.style.borderColor = "rgba(0,208,132,.45)";
       markBtn.style.background = "rgba(0,208,132,.10)";
@@ -842,6 +843,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
