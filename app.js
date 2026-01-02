@@ -487,7 +487,16 @@ function render() {
 
     const title = document.createElement("div");
     title.className = "item-title";
-    title.textContent = h.name;
+    
+     const dot = document.createElement("span");
+      dot.className = "dot";
+
+      const rate = habitOnTrackRateToday(h, week.counts, today);
+      dot.style.background = colourForHabit(rate);
+
+      title.appendChild(dot);
+      title.appendChild(document.createTextNode(" " + h.name));
+
 
     const meta = document.createElement("div");
     meta.className = "meta";
@@ -502,7 +511,7 @@ if (streak > 0) {
     const hit = (h.goal || 0) > 0 && wCount >= (h.goal || 0);
     meta.appendChild(makePill(`Week: ${wCount}/${h.goal}${hit ? " 🎯" : ""}`));
 
-    left.appendChild(title);
+left.appendChild(title);
     left.appendChild(meta);
 
     const right = document.createElement("div");
@@ -640,6 +649,29 @@ function habitStreak(habitId) {
 
   return streak;
 }
+function dayIndexMon0(dateISO) {
+  const [y, m, d] = dateISO.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  return (dt.getDay() + 6) % 7; // Mon=0 ... Sun=6
+}
+
+function habitOnTrackRateToday(habit, weekCounts, dateISO) {
+  const goal = habit.goal || 0;
+  if (goal === 0) return 1; // always green if no goal
+
+  const done = weekCounts[habit.id] || 0;
+
+  // Days elapsed in the week including today: Mon=1 ... Sun=7
+  const daysElapsed = dayIndexMon0(dateISO) + 1;
+
+  // Expected progress by today (spread evenly across 7 days)
+  const expected = (goal * daysElapsed) / 7;
+
+  // Avoid divide-by-zero / tiny expected values
+  const denom = Math.max(0.0001, expected);
+
+  return Math.min(1, done / denom);
+}
 
 function clampInt(n, min, max) {
   if (Number.isNaN(n)) return min;
@@ -657,6 +689,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
