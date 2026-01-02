@@ -19,6 +19,7 @@
     </div>
     <div class="top-actions">
       <button class="btn ghost" id="btnParent">Parent</button>
+      <button class="btn" id="btnSummary">Summary</button>
       <button class="btn" id="btnSettings">Settings</button>
     </div>
   </header>
@@ -99,7 +100,46 @@
 
   </main>
 
+  
   <!-- JavaScript -->
+  <!-- Summary Modal -->
+<div class="modal hidden" id="summaryModal">
+  <div class="modal-backdrop" id="summaryClose"></div>
+
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Weekly Summary</div>
+        <div class="modal-sub" id="summaryRange"></div>
+      </div>
+
+      <div class="row" style="gap:10px;">
+        <button class="btn ghost" id="summaryPrevWeek">◀</button>
+        <button class="btn ghost" id="summaryNextWeek">▶</button>
+        <button class="btn" id="summaryCloseBtn">Close</button>
+      </div>
+    </div>
+
+    <div class="summary-section">
+      <div class="summary-kpis" id="summaryKpis"></div>
+    </div>
+
+    <div class="summary-section">
+      <div class="summary-grid" id="summaryGrid"></div>
+    </div>
+
+    <div class="summary-section">
+      <div class="modal-title" style="font-size:16px;">Month Overview</div>
+      <div class="row" style="gap:10px; margin-top:10px;">
+        <button class="btn ghost" id="summaryPrevMonth">◀</button>
+        <div class="modal-sub" id="summaryMonthLabel"></div>
+        <button class="btn ghost" id="summaryNextMonth">▶</button>
+      </div>
+      <div class="summary-kpis" id="summaryMonthKpis" style="margin-top:10px;"></div>
+    </div>
+  </div>
+</div>
+
   <script src="app.js"></script>
   <script>
     if ("serviceWorker" in navigator) {
@@ -108,3 +148,4 @@
   </script>
 </body>
 </html>
+
