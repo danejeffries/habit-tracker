@@ -19,6 +19,8 @@ const btnReviewMonth = $("btnReviewMonth");
 const btnAddHabit = $("btnAddHabit");
 const btnSettings = $("btnSettings");
 const btnParent = $("btnParent");
+const btnSummary = $("btnSummary");
+
 function requireParentPin() {
   if (!state.settings.parentPin) return true;
 
@@ -717,6 +719,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
