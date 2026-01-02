@@ -20,6 +20,23 @@ const btnAddHabit = $("btnAddHabit");
 const btnSettings = $("btnSettings");
 const btnParent = $("btnParent");
 const btnSummary = $("btnSummary");
+// Summary modal elements
+const summaryModal = $("summaryModal");
+const summaryClose = $("summaryClose");
+const summaryCloseBtn = $("summaryCloseBtn");
+const summaryRange = $("summaryRange");
+const summaryPrevWeek = $("summaryPrevWeek");
+const summaryNextWeek = $("summaryNextWeek");
+const summaryKpis = $("summaryKpis");
+const summaryGrid = $("summaryGrid");
+
+const summaryPrevMonth = $("summaryPrevMonth");
+const summaryNextMonth = $("summaryNextMonth");
+const summaryMonthLabel = $("summaryMonthLabel");
+const summaryMonthKpis = $("summaryMonthKpis");
+
+let summaryWeekOffset = 0;   // 0=this week, -1=last week, +1=next week
+let summaryMonthOffset = 0;  // 0=this month, -1=last month, +1=next month
 
 function requireParentPin() {
   if (!state.settings.parentPin) return true;
@@ -162,6 +179,31 @@ function weekKey(dateISO) {
   const days = Math.floor((dt - jan1) / 86400000);
   const w = Math.floor(days / 7) + 1;
   return `${year}-W${String(w).padStart(2, "0")}`;
+}
+function addDaysISO(dateISO, days) {
+  const [y,m,d] = dateISO.split("-").map(Number);
+  const dt = new Date(y, m-1, d);
+  dt.setDate(dt.getDate() + days);
+  return isoToday(dt);
+}
+
+function weekStartISO(dateISO) {
+  const [y,m,d] = dateISO.split("-").map(Number);
+  const dt = new Date(y, m-1, d);
+  const dow = (dt.getDay() + 6) % 7; // Mon=0
+  dt.setDate(dt.getDate() - dow);
+  return isoToday(dt);
+}
+
+function monthStartISO(dateISO) {
+  const [y,m] = dateISO.split("-").map(Number);
+  return `${y}-${String(m).padStart(2,"0")}-01`;
+}
+
+function shiftMonthKey(mk, delta) {
+  const [y,m] = mk.split("-").map(Number);
+  const dt = new Date(y, m-1 + delta, 1);
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;
 }
 
 // ---------- Monthly habit set ----------
@@ -335,40 +377,72 @@ function parentFlow() {
 }
 
 function summaryFlow() {
-  if (!requireParentPin()) return; // keep it parent-gated
+  if (!requireParentPin()) return;
 
+  summaryWeekOffset = 0;
+  summaryMonthOffset = 0;
+  summaryModal.classList.remove("hidden");
+
+  renderSummaryModal();
+
+  // close handlers
+  summaryClose.onclick = () => summaryModal.classList.add("hidden");
+  summaryCloseBtn.onclick = () => summaryModal.classList.add("hidden");
+
+  // week nav
+  summaryPrevWeek.onclick = () => { summaryWeekOffset -= 1; renderSummaryModal(); };
+  summaryNextWeek.onclick = () => { summaryWeekOffset += 1; renderSummaryModal(); };
+
+  // month nav
+  summaryPrevMonth.onclick = () => { summaryMonthOffset -= 1; renderSummaryModal(); };
+  summaryNextMonth.onclick = () => { summaryMonthOffset += 1; renderSummaryModal(); };
+}
+
+function renderSummaryModal() {
   const today = isoToday();
-  const wk = weekKey(today);
-  const mk = monthKey(today);
   const habits = activeHabitsForCurrentMonth();
 
+  // --- WEEK ---
+  const weekStart = addDaysISO(weekStartISO(today), summaryWeekOffset * 7);
+  const weekEnd = addDaysISO(weekStart, 6);
+  const wk = weekKey(weekStart);
+
+  summaryRange.textContent = `${weekStart} → ${weekEnd}`;
+
   const week = weekProgress(wk, habits);
-  const month = monthProgress(mk, habits);
+  const weekPctVal = week.totalGoals ? Math.round((week.done / week.totalGoals) * 100) : 0;
 
-  const lines = [];
-  lines.push("WEEKLY SUMMARY");
-  lines.push(`Week: ${wk}`);
-  lines.push("");
+  summaryKpis.innerHTML = `
+    <div class="kpi"><div class="kpi-num">${weekPctVal}%</div><div class="kpi-sub">Weekly goal progress</div></div>
+    <div class="kpi"><div class="kpi-num">${week.done}/${week.totalGoals}</div><div class="kpi-sub">Goal points</div></div>
+  `;
 
-  for (const h of habits) {
+  // simple weekly list (clean + fast)
+  summaryGrid.innerHTML = habits.map(h => {
     const c = week.counts[h.id] || 0;
     const g = h.goal || 0;
-    lines.push(`${h.name}: ${c}/${g}`);
-  }
+    const hit = (g > 0 && c >= g) ? " 🎯" : "";
+    return `<div class="row" style="justify-content:space-between;">
+      <div>${h.name}</div>
+      <div class="muted">${c}/${g}${hit}</div>
+    </div>`;
+  }).join("");
 
-  lines.push("");
-  lines.push("MONTH TO DATE");
-  lines.push(`Month: ${mk}`);
-  lines.push("");
+  // --- MONTH ---
+  const baseMk = monthKey(today);
+  const mk = shiftMonthKey(baseMk, summaryMonthOffset);
+  summaryMonthLabel.textContent = mk;
 
-  for (const h of habits) {
-    const c = month.counts[h.id] || 0;
-    const g = (h.goal || 0) * month.weeksSoFar;
-    lines.push(`${h.name}: ${c}/${g}`);
-  }
+  const month = monthProgress(mk, habits);
+  const monthPctVal = month.totalGoals ? Math.round((month.done / month.totalGoals) * 100) : 0;
 
-  alert(lines.join("\n"));
+  summaryMonthKpis.innerHTML = `
+    <div class="kpi"><div class="kpi-num">${monthPctVal}%</div><div class="kpi-sub">Month to date</div></div>
+    <div class="kpi"><div class="kpi-num">${month.done}/${month.totalGoals}</div><div class="kpi-sub">Goal points</div></div>
+    <div class="kpi"><div class="kpi-num">${month.weeksSoFar}</div><div class="kpi-sub">Weeks counted</div></div>
+  `;
 }
+
 
 function updateSubtitle() {
   const t = state.settings.profileName ? `Profile: ${state.settings.profileName}` : "Local-first • Works offline";
@@ -750,6 +824,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
