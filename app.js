@@ -70,6 +70,8 @@ function init() {
 });
 
   btnParent.addEventListener("click", parentFlow);
+  btnSummary.addEventListener("click", summaryFlow);
+
  btnReviewMonth.addEventListener("click", () => {
   if (!requireParentPin()) return;
   monthlyReviewFlow(true);
@@ -719,6 +721,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
