@@ -587,6 +587,7 @@ function computeRewards(habits, day, week, month, today, wk, mk) {
 
 // ---------- Render ----------
 function render() {
+   console.log("latest log:", state.log[state.log.length - 1]);
   const today = isoToday();
   const wk = weekKey(today);
   const mk = monthKey(today);
@@ -872,6 +873,7 @@ function setNoteForDay(habitId, dateISO, note) {
   const trimmed = (note || "").trim();
   if (trimmed) state.log.push({ date: dateISO, habitId, note: trimmed });
 }
+
 
 
 
