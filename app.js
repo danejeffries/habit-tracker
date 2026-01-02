@@ -340,6 +340,41 @@ function parentFlow() {
   }
   alert(buildParentDashboard());
 }
+function summaryFlow() {
+  if (!requireParentPin()) return; // keep it parent-gated
+
+  const today = isoToday();
+  const wk = weekKey(today);
+  const mk = monthKey(today);
+  const habits = activeHabitsForCurrentMonth();
+
+  const week = weekProgress(wk, habits);
+  const month = monthProgress(mk, habits);
+
+  const lines = [];
+  lines.push("WEEKLY SUMMARY");
+  lines.push(`Week: ${wk}`);
+  lines.push("");
+
+  for (const h of habits) {
+    const c = week.counts[h.id] || 0;
+    const g = h.goal || 0;
+    lines.push(`${h.name}: ${c}/${g}`);
+  }
+
+  lines.push("");
+  lines.push("MONTH TO DATE");
+  lines.push(`Month: ${mk}`);
+  lines.push("");
+
+  for (const h of habits) {
+    const c = month.counts[h.id] || 0;
+    const g = (h.goal || 0) * month.weeksSoFar;
+    lines.push(`${h.name}: ${c}/${g}`);
+  }
+
+  alert(lines.join("\n"));
+}
 
 function updateSubtitle() {
   const t = state.settings.profileName ? `Profile: ${state.settings.profileName}` : "Local-first • Works offline";
@@ -721,6 +756,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
