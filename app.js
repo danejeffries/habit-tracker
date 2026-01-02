@@ -874,6 +874,28 @@ function setNoteForDay(habitId, dateISO, note) {
   if (trimmed) state.log.push({ date: dateISO, habitId, note: trimmed });
 }
 
+function getTodayNote(habitId) {
+  const today = isoToday();
+  for (let i = state.log.length - 1; i >= 0; i--) {
+    const e = state.log[i];
+    if (e.date === today && e.habitId === habitId) {
+      return e.note || "";
+    }
+  }
+  return "";
+}
+
+function setTodayNote(habitId, note) {
+  const today = isoToday();
+  state.log = state.log.filter(
+    e => !(e.date === today && e.habitId === habitId)
+  );
+  const trimmed = (note || "").trim();
+  if (trimmed) {
+    state.log.push({ date: today, habitId, note: trimmed });
+  }
+}
+
 
 
 
