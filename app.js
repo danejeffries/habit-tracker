@@ -19,6 +19,16 @@ const btnReviewMonth = $("btnReviewMonth");
 const btnAddHabit = $("btnAddHabit");
 const btnSettings = $("btnSettings");
 const btnParent = $("btnParent");
+function requireParentPin() {
+  if (!state.settings.parentPin) return true;
+
+  const pin = prompt("Enter Parent PIN:");
+  if (pin !== state.settings.parentPin) {
+    alert("Incorrect PIN");
+    return false;
+  }
+  return true;
+}
 
 const habitList = $("habitList");
 const emptyState = $("emptyState");
@@ -696,6 +706,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
