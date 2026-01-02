@@ -396,6 +396,13 @@ function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
+function colourForHabit(rate) {
+  if (rate >= 0.8) return cssVar("--good"); // green
+  if (rate >= 0.5) return cssVar("--mid");  // yellow
+  return cssVar("--bad");                   // red
+}
+
+
 // ---------- Rewards / Badges ----------
 function addRewardOnce(type, label) {
   const key = `${type}|${label}`;
@@ -689,6 +696,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
