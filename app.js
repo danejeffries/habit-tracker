@@ -58,13 +58,21 @@ init();
 render();
 
 function init() {
-  btnAddHabit.addEventListener("click", addHabitFlow);
-  btnSettings.addEventListener("click", settingsFlow);
+  btnAddHabit.addEventListener("click", () => {
+  if (!requireParentPin()) return;
+  addHabitFlow();
+});
+  btnSettings.addEventListener("click", () => {
+  if (!requireParentPin()) return;
+  settingsFlow();
+});
+
   btnParent.addEventListener("click", parentFlow);
  btnReviewMonth.addEventListener("click", () => {
   if (!requireParentPin()) return;
   monthlyReviewFlow(true);
 });
+
 
 
   updateSubtitle();
@@ -256,6 +264,7 @@ function addHabitFlow() {
 }
 
 function editHabitPickFlow() {
+  if (!requireParentPin()) return;
   if (!state.habits.length) return;
 
   const list = state.habits.map((h, i) => `${i + 1}. ${h.name} (goal ${h.goal}/wk)`).join("\n");
@@ -269,7 +278,11 @@ function editHabitPickFlow() {
 }
 
 function editHabitFlow(h) {
-  const newName = prompt("Habit name:", h.name);
+  if (!requireParentPin()) return;
+  ...
+}
+ 
+   const newName = prompt("Habit name:", h.name);
   if (!newName) return;
 
   const goalStr = prompt("Weekly goal (0–7):", String(h.goal));
@@ -706,6 +719,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
