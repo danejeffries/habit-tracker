@@ -453,19 +453,37 @@ function updateSubtitle() {
 function markHabitDoneToday(habitId) {
   const today = isoToday();
   const doneForDay = state.done[today] || {};
-  if (doneForDay[habitId]) return;
+  const isDone = !!doneForDay[habitId];
 
+  // ✅ UNDO if already done
+  if (isDone) {
+    // remove completion flag
+    delete doneForDay[habitId];
+    state.done[today] = doneForDay;
+
+    // remove today's log entry for this habit (if any)
+    state.log = state.log.filter(e => !(e.date === today && e.habitId === habitId));
+
+    saveState();
+    render();
+    return;
+  }
+
+  // ✅ MARK DONE (same as before)
   const habit = state.habits.find(h => h.id === habitId);
-  const note = prompt(`Optional note for: ${habit?.name || "habit"}\n\n(Leave blank for none)`, "") ?? "";
+  const note = prompt(
+    `Optional note for: ${habit?.name || "habit"}\n\n(Leave blank for none)`,
+    ""
+  ) ?? "";
 
   doneForDay[habitId] = true;
   state.done[today] = doneForDay;
-
   state.log.push({ date: today, habitId, note: note.trim() });
 
   saveState();
   render();
 }
+
 
 // ---------- Progress + colours ----------
 function dayProgress(dateISO, habits) {
@@ -824,6 +842,7 @@ function bar(val, max, width) {
   const fill = Math.round(r * width);
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
+
 
 
 
