@@ -844,6 +844,20 @@ function bar(val, max, width) {
   return "█".repeat(fill) + "░".repeat(Math.max(0, width - fill));
 }
 
+function noteForDay(habitId, dateISO) {
+  for (let i = state.log.length - 1; i >= 0; i--) {
+    const e = state.log[i];
+    if (e.date === dateISO && e.habitId === habitId) return e.note || "";
+  }
+  return "";
+}
+
+function setNoteForDay(habitId, dateISO, note) {
+  state.log = state.log.filter(e => !(e.date === dateISO && e.habitId === habitId));
+  const trimmed = (note || "").trim();
+  if (trimmed) state.log.push({ date: dateISO, habitId, note: trimmed });
+}
+
 
 
 
